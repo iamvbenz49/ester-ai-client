@@ -28,6 +28,7 @@
     "geist": "^1.7.2",
     "lucide-react": "^1.25.0",
     "next": "^16.2.11",
+    "next-auth": "^5.0.0-beta.32",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
