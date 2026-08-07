@@ -20,29 +20,46 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = normalizeEmail(parsed.data.email);
-  const existing = await prisma.user.findUnique({ where: { email } });
-
-  if (existing) {
+  if (!process.env.DATABASE_URL?.trim()) {
+    console.error("[signup] DATABASE_URL is not set");
     return NextResponse.json(
-      {
-        error:
-          "An account with this email already exists. Try signing in instead.",
-      },
-      { status: 409 },
+      { error: "Sign-up is temporarily unavailable. Please try again later." },
+      { status: 503 },
     );
   }
 
-  const passwordHash = await hashPassword(parsed.data.password);
+  const email = normalizeEmail(parsed.data.email);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name: parsed.data.name?.trim() || null,
-      passwordHash,
-    },
-    select: { id: true, email: true, name: true },
-  });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
 
-  return NextResponse.json({ user }, { status: 201 });
+    if (existing) {
+      return NextResponse.json(
+        {
+          error:
+            "An account with this email already exists. Try signing in instead.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const passwordHash = await hashPassword(parsed.data.password);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name: parsed.data.name?.trim() || null,
+        passwordHash,
+      },
+      select: { id: true, email: true, name: true },
+    });
+
+    return NextResponse.json({ user }, { status: 201 });
+  } catch (error) {
+    console.error("[signup]", error);
+    return NextResponse.json(
+      { error: "Could not create your account. Please try again." },
+      { status: 500 },
+    );
+  }
 }
