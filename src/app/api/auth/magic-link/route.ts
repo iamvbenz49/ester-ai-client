@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createMagicLinkForEmail } from "@/server/auth/magic-link";
+import { sendMagicLinkEmail } from "@/server/email/send-magic-link-email";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -19,10 +20,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
   }
 
-  const { url } = await createMagicLinkForEmail(parsed.data.email);
-
-  if (process.env.NODE_ENV === "development") {
-    console.info("[magic-link] Sign-in link:", url);
+  try {
+    const { url } = await createMagicLinkForEmail(parsed.data.email);
+    await sendMagicLinkEmail(parsed.data.email, url);
+  } catch (error) {
+    console.error("[magic-link]", error);
+    return NextResponse.json(
+      { error: "Could not send a sign-in link. Please try again later." },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({

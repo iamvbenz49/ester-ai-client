@@ -62,3 +62,5 @@ temp/
 # Certificates / keys
 *.pem
 *.key
+.vercel
+.env*

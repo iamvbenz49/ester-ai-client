@@ -118,7 +118,7 @@ export default function LoginForm() {
       }
 
       setBannerSuccess(
-        "Check your email for a sign-in link. (Dev: link is in the server console.)",
+        "Check your email for a sign-in link. In local dev without email configured, check the server terminal for the link.",
       );
     } catch {
       setBannerError(AUTH_ERROR_MESSAGES.Default);
