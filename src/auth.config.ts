@@ -38,7 +38,11 @@ export const authConfig = {
         return true;
       }
 
-      return isLoggedIn;
+      if (isLoggedIn) {
+        return true;
+      }
+
+      return Response.redirect(new URL("/login", nextUrl));
     },
   },
 } satisfies NextAuthConfig;
