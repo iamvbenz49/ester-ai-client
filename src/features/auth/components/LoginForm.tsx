@@ -1,32 +1,56 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
-import { FcGoogle } from "react-icons/fc";
-import { FaApple } from "react-icons/fa";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import {
+  AUTH_ERROR_MESSAGES,
+  authBannerBoxClass,
+  authBannerClass,
+  authBlockGap,
+  authDividerLabelClass,
+  authDividerMy,
+  authFieldIconSize,
+  authFooterLinkClass,
+  authFormStack,
+  authInputClass,
+  authInputWithIconClass,
+  authModeTabClass,
+  authSubtitleClass,
+  authTitleClass,
+  emailFieldClass,
+  primaryButtonClass,
+} from "@/features/auth/auth-constants";
+import AuthBrandHeader from "@/features/auth/components/AuthBrandHeader";
+import AuthFormShell from "@/features/auth/components/AuthFormShell";
+import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
+import TermsFooter from "@/features/auth/components/TermsFooter";
 
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  AccessDenied: "Access was denied. Try again or use another account.",
-  Configuration:
-    "Sign-in is not configured correctly. Check your Google OAuth settings.",
-  OAuthAccountNotLinked:
-    "This email is already linked to another sign-in method.",
-  OAuthSignin: "Could not start Google sign-in. Please try again.",
-  OAuthCallback: "Google sign-in failed. Please try again.",
-  Default: "Something went wrong. Try again.",
-};
+const loginFormSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(1, "Enter your password"),
+});
 
-const socialButtonClass =
-  "group flex h-16 w-full items-center rounded-2xl border border-white/10 bg-white/[0.02] px-6 transition-all duration-300 hover:border-violet-500/40 hover:bg-white/[0.04]";
+type LoginFormValues = z.infer<typeof loginFormSchema>;
 
-const stubButtonClass =
-  "group flex h-16 w-full cursor-not-allowed items-center rounded-2xl border border-white/10 bg-white/[0.02] px-6 opacity-50";
+const magicLinkSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+});
 
-export default function LoginCard() {
+type MagicLinkValues = z.infer<typeof magicLinkSchema>;
+
+export default function LoginForm() {
   const searchParams = useSearchParams();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const router = useRouter();
+  const [mode, setMode] = useState<"password" | "magic">("password");
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [bannerSuccess, setBannerSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const authErrorMessage = useMemo(() => {
     const code = searchParams.get("error");
@@ -34,130 +58,235 @@ export default function LoginCard() {
     return AUTH_ERROR_MESSAGES[code] ?? AUTH_ERROR_MESSAGES.Default;
   }, [searchParams]);
 
-  const handleGoogleSignIn = useCallback(() => {
-    setIsGoogleLoading(true);
-    void signIn("google", { callbackUrl: "/" });
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const magicForm = useForm<MagicLinkValues>({
+    resolver: zodResolver(magicLinkSchema),
+    defaultValues: { email: "" },
+  });
+
+  const switchMode = useCallback((next: "password" | "magic") => {
+    setMode(next);
+    setBannerError(null);
+    setBannerSuccess(null);
   }, []);
 
+  const onPasswordLogin = loginForm.handleSubmit(async (values) => {
+    setBannerError(null);
+    setBannerSuccess(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setBannerError(AUTH_ERROR_MESSAGES.CredentialsSignin);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setBannerError(AUTH_ERROR_MESSAGES.Default);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const onMagicLink = magicForm.handleSubmit(async (values) => {
+    setBannerError(null);
+    setBannerSuccess(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: values.email }),
+      });
+
+      if (!response.ok) {
+        setBannerError(AUTH_ERROR_MESSAGES.Default);
+        return;
+      }
+
+      setBannerSuccess(
+        "Check your email for a sign-in link. (Dev: link is in the server console.)",
+      );
+    } catch {
+      setBannerError(AUTH_ERROR_MESSAGES.Default);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const displayError = bannerError ?? authErrorMessage;
+  const passwordErrors = loginForm.formState.errors;
+  const magicErrors = magicForm.formState.errors;
+
   return (
-    <section className="flex h-full w-full items-center justify-center bg-[#09090F] px-6 sm:px-16">
-      <div className="w-full max-w-[480px]">
-        <div className="mb-16 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-violet-500/60">
-            <span className="text-xl font-light text-violet-400">E</span>
-          </div>
+    <AuthFormShell footer={<TermsFooter />}>
+      <AuthBrandHeader />
 
-          <span className="text-lg font-light tracking-[10px] text-white">
-            ESTER
-          </span>
+      <h1 className={authTitleClass}>Welcome</h1>
+
+      <p className={authSubtitleClass}>
+        Continue with your account to meet your companion.
+      </p>
+
+      {displayError ? (
+        <div
+          className={`${authBlockGap} ${authBannerBoxClass} border-rose-500/40 bg-rose-500/10 ${authBannerClass}`}
+          role="alert"
+        >
+          {displayError}
         </div>
+      ) : null}
 
-        <h1 className="text-[68px] font-semibold leading-none tracking-[-3px] text-white">
-          Welcome
-        </h1>
-
-        <p className="mt-6 text-[22px] leading-9 text-zinc-400">
-          Continue with your account
-          <br />
-          to meet your companion.
-        </p>
-
-        {authErrorMessage ? (
-          <div
-            className="mt-8 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-5 py-4 text-base leading-relaxed text-zinc-200"
-            role="alert"
-          >
-            {authErrorMessage}
-          </div>
-        ) : null}
-
-        <div className="mt-14 space-y-5">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            aria-busy={isGoogleLoading}
-            className={`${socialButtonClass} ${
-              isGoogleLoading ? "pointer-events-none opacity-70" : ""
-            }`}
-          >
-            <FcGoogle size={30} />
-
-            <span className="ml-6 flex-1 text-left text-xl font-medium text-white">
-              {isGoogleLoading ? "Connecting…" : "Continue with Google"}
-            </span>
-
-            {isGoogleLoading ? (
-              <Loader2
-                size={22}
-                className="animate-spin text-violet-400"
-                aria-hidden
-              />
-            ) : (
-              <ArrowRight
-                size={22}
-                className="text-zinc-500 transition group-hover:translate-x-1"
-              />
-            )}
-          </button>
-
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            className={stubButtonClass}
-          >
-            <FaApple size={28} className="text-white" />
-
-            <span className="ml-6 flex-1 text-left text-xl font-medium text-white">
-              Continue with Apple
-            </span>
-
-            <ArrowRight size={22} className="text-zinc-500" />
-          </button>
+      {bannerSuccess ? (
+        <div
+          className={`${authBlockGap} ${authBannerBoxClass} border-emerald-500/40 bg-emerald-500/10 ${authBannerClass}`}
+          role="status"
+        >
+          {bannerSuccess}
         </div>
+      ) : null}
 
-        <div className="my-12 flex items-center">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="mx-6 text-lg text-zinc-500">OR</span>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
+      <div className={authBlockGap}>
+        <GoogleSignInButton />
+      </div>
 
-        <div className="flex h-16 items-center rounded-2xl border border-violet-500/50 bg-transparent px-5 opacity-50">
-          <Mail size={22} className="text-zinc-500" />
+      <div className={`flex items-center ${authDividerMy}`}>
+        <div className="h-px flex-1 bg-white/10" />
+        <span className={authDividerLabelClass}>OR</span>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
 
-          <input
-            type="email"
-            placeholder="Email Address"
-            disabled
-            title="Coming soon"
-            className="ml-4 flex-1 bg-transparent text-lg text-white placeholder:text-zinc-500 outline-none"
-          />
-        </div>
-
+      <div className="mb-4 flex gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-1.5">
         <button
           type="button"
-          disabled
-          title="Coming soon"
-          className="group mt-6 flex h-16 w-full cursor-not-allowed items-center justify-center rounded-2xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#9333EA] text-xl font-semibold text-white opacity-50 shadow-[0_15px_40px_rgba(124,58,237,0.35)]"
+          onClick={() => switchMode("password")}
+          className={`${authModeTabClass} ${
+            mode === "password"
+              ? "bg-violet-600/30 text-white"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
         >
-          Continue
-          <ArrowRight size={22} className="ml-3" />
+          Email & password
         </button>
-
-        <p className="mt-12 text-center text-[16px] leading-7 text-zinc-500">
-          By continuing you agree to our
-          <br />
-          <button type="button" className="text-violet-400 hover:text-violet-300">
-            Terms
-          </button>
-          {" & "}
-          <button type="button" className="text-violet-400 hover:text-violet-300">
-            Privacy Policy
-          </button>
-          .
-        </p>
+        <button
+          type="button"
+          onClick={() => switchMode("magic")}
+          className={`${authModeTabClass} ${
+            mode === "magic"
+              ? "bg-violet-600/30 text-white"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          Magic link
+        </button>
       </div>
-    </section>
+
+      {mode === "password" ? (
+        <form onSubmit={onPasswordLogin} className={authFormStack} noValidate>
+          <div className={emailFieldClass}>
+            <Mail size={authFieldIconSize} className="shrink-0 text-zinc-500" />
+            <input
+              type="email"
+              autoComplete="email"
+              placeholder="Email Address"
+              className={authInputWithIconClass}
+              {...loginForm.register("email")}
+            />
+          </div>
+
+          <div className={emailFieldClass}>
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Password"
+              className={`px-1 ${authInputClass}`}
+              {...loginForm.register("password")}
+            />
+          </div>
+
+          {passwordErrors.email?.message || passwordErrors.password?.message ? (
+            <p className="text-sm text-rose-400" role="alert">
+              {passwordErrors.email?.message ??
+                passwordErrors.password?.message}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={primaryButtonClass}
+          >
+            {isSubmitting ? (
+              <>
+                Signing in…
+                <Loader2 size={authFieldIconSize} className="animate-spin" aria-hidden />
+              </>
+            ) : (
+              <>
+                Continue
+                <ArrowRight size={authFieldIconSize} />
+              </>
+            )}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={onMagicLink} className={authFormStack} noValidate>
+          <div className={emailFieldClass}>
+            <Mail size={authFieldIconSize} className="shrink-0 text-zinc-500" />
+            <input
+              type="email"
+              autoComplete="email"
+              placeholder="Email Address"
+              className={authInputWithIconClass}
+              {...magicForm.register("email")}
+            />
+          </div>
+
+          {magicErrors.email?.message ? (
+            <p className="text-sm text-rose-400" role="alert">
+              {magicErrors.email.message}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={primaryButtonClass}
+          >
+            {isSubmitting ? (
+              <>
+                Sending link…
+                <Loader2 size={authFieldIconSize} className="animate-spin" aria-hidden />
+              </>
+            ) : (
+              <>
+                Email me a link
+                <ArrowRight size={authFieldIconSize} />
+              </>
+            )}
+          </button>
+        </form>
+      )}
+
+      <p className={authFooterLinkClass}>
+        New to Ester?{" "}
+        <Link href="/signup" className="text-violet-400 hover:text-violet-300">
+          Sign up
+        </Link>
+      </p>
+    </AuthFormShell>
   );
 }

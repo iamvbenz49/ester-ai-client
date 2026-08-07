@@ -7,9 +7,9 @@ type Props = {
 
 export default function AuthLayout({ children }: Props) {
   return (
-    <main className="flex h-screen bg-[#050616]">
+    <main className="flex h-dvh max-h-dvh overflow-hidden bg-[#050616]">
       <Hero />
-      <section className="flex flex-1 items-center justify-center">
+      <section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
         {children}
       </section>
     </main>

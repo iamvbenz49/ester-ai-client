@@ -18,10 +18,17 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.3",
     "@hookform/resolvers": "^5.4.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/client": "6.19.3",
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",
     "axios": "^1.18.1",
@@ -40,6 +47,7 @@
     "@types/node": "26.1.1",
     "@types/react": "^19.2.17",
     "postcss": "^8.5.21",
+    "prisma": "6.19.3",
     "typescript": "7.0.2"
   }
 }

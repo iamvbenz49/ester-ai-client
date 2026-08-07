@@ -49,6 +49,8 @@ coverage/
 # Local database (if applicable)
 *.sqlite
 *.sqlite3
+prisma/dev.db
+prisma/dev.db-journal
 
 # Vercel
 .vercel/
