@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import HomeView from "@/features/home/components/HomeView";
+import { listActiveCharacters } from "@/server/characters/list-active-characters";
 
 export default async function HomePage() {
   const session = await auth();
@@ -9,5 +10,7 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  return <HomeView user={session.user} />;
+  const characters = await listActiveCharacters();
+
+  return <HomeView user={session.user} characters={characters} />;
 }

@@ -1,10 +1,12 @@
-"use client";
-
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import type { User } from "next-auth";
+import type { CharacterPublic } from "@/server/characters/character-public";
+import StartChatButton from "./StartChatButton";
 
 type Props = {
   user: User;
+  characters: CharacterPublic[];
 };
 
 function getInitial(user: User) {
@@ -12,8 +14,9 @@ function getInitial(user: User) {
   return source.charAt(0).toUpperCase();
 }
 
-export default function HomeView({ user }: Props) {
+export default function HomeView({ user, characters }: Props) {
   const displayName = user.name || user.email || "there";
+  const primaryCharacter = characters[0];
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050616] px-6">
@@ -58,10 +61,46 @@ export default function HomeView({ user }: Props) {
           )}
         </div>
 
+        {primaryCharacter ? (
+          <section
+            className="mt-12 rounded-2xl border border-violet-500/25 bg-white/[0.03] p-6"
+            aria-label="Companion"
+          >
+            <div className="flex items-center gap-4">
+              {primaryCharacter.avatarUrl ? (
+                <img
+                  src={primaryCharacter.avatarUrl}
+                  alt=""
+                  className="h-14 w-14 rounded-full border border-violet-500/40 object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/10 text-xl font-medium text-violet-300">
+                  {primaryCharacter.name.charAt(0)}
+                </div>
+              )}
+              <div>
+                <p className="text-lg font-medium text-white">
+                  {primaryCharacter.name}
+                </p>
+                {primaryCharacter.greeting ? (
+                  <p className="mt-1 text-sm leading-6 text-zinc-400">
+                    {primaryCharacter.greeting}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <StartChatButton character={primaryCharacter} />
+          </section>
+        ) : (
+          <p className="mt-12 text-center text-zinc-500">
+            No companions are available yet.
+          </p>
+        )}
+
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="group mt-14 flex h-16 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#9333EA] text-xl font-semibold text-white shadow-[0_15px_40px_rgba(124,58,237,0.35)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_20px_50px_rgba(124,58,237,0.45)]"
+          className="mt-8 flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-700 text-base font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
         >
           Sign out
         </button>
