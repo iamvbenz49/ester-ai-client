@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { signOut } from "next-auth/react";
 import type { User } from "next-auth";
 import type { CharacterPublic } from "@/server/characters/character-public";
+import SignOutButton from "./SignOutButton";
 import StartChatButton from "./StartChatButton";
 
 type Props = {
@@ -97,13 +96,7 @@ export default function HomeView({ user, characters }: Props) {
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="mt-8 flex h-12 w-full items-center justify-center rounded-2xl border border-zinc-700 text-base font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
-        >
-          Sign out
-        </button>
+        <SignOutButton />
       </div>
     </main>
   );
